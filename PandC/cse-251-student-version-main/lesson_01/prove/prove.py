@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L01 Prove
 File:   prove.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Drawing with Python Turtle
 
@@ -173,10 +173,47 @@ def run_with_threads(tur, log, main_turtle):
     log.start_timer('Start Drawing With Threads')
     tur.move(0, 0)
 
-    # TODO - Start adding your code here.
-    # You need to use 4 threads where each thread concurrently drawing one type of shape.
-    # You are free to change any functions in this code except those we marked DO NOT CHANGE.
+    #-----------------------------------------
+    """
+    Turtle doesn't support multithreading inherently because there is only one cursor that
+    can only do one thing at a time, so this draws each complete shape and moves to the
+    next one instead of drawing squares, then circles, etc.
+    """
+    lock = threading.Lock()
+    def draw_squares_partial(tur, x, y):
+        with lock:
+            draw_square(tur, x - 50, y + 50, 100)
 
+    def draw_circles_partial(tur, x, y):
+        with lock:
+            draw_circle(tur, x, y-2, 50)
+
+    def draw_triangles_partial(tur, x, y):
+        with lock:
+            draw_triangle(tur, x-30, y-30+10, 60)
+
+    def draw_rectangles_partial(tur, x, y):
+        with lock:
+            draw_rectangle(tur, x-10, y+5, 20, 15)
+
+    def run_threaded_drawing():
+        threads = []
+        
+        for x in range(-300, 350, 200):
+            for y in range(-300, 350, 200):
+                threads.append(threading.Thread(target=draw_squares_partial, args=(tur, x, y)))
+                threads.append(threading.Thread(target=draw_circles_partial, args=(tur, x, y)))
+                threads.append(threading.Thread(target=draw_triangles_partial, args=(tur, x, y)))
+                threads.append(threading.Thread(target=draw_rectangles_partial, args=(tur, x, y)))
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+    run_threaded_drawing()
+    #------------------------------------------
     log.step_timer('All drawing commands have been created')
 
     log.write(f'Number of Drawing Commands: {tur.get_command_count()}')
