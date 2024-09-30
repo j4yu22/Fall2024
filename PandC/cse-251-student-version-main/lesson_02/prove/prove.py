@@ -51,6 +51,7 @@ import json
 import threading
 
 # Include cse 251 common Python files
+# this import wasn't working
 from cse251 import *
 
 # Const Values
