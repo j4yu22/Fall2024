@@ -51,7 +51,7 @@ import json
 import threading
 
 # Include cse 251 common Python files
-# this import wasn't working
+# this import wasn't working on my desktop for some reason
 from cse251 import *
 
 # Const Values
@@ -85,13 +85,11 @@ def get_data_from_section(urls, section_name):
     threads = []
     results = []
 
-    # Create threads for each URL in the section
     for url in urls:
         thread = APIThread(url, section_name)
         threads.append(thread)
         thread.start()
 
-    # Wait for all threads to complete
     for thread in threads:
         thread.join()
         results.append(thread.result)
@@ -104,7 +102,6 @@ def main():
     log = Log(show_terminal=True)
     log.start_timer('Starting to retrieve data from the server')
 
-    # Step 1: Retrieve Top API urls
     response = requests.get(TOP_API_URL)
     call_count += 1
 
@@ -114,7 +111,6 @@ def main():
         print("Error retrieving top API URL")
         return
 
-    # Step 2: Retrieve Details on film 6
     film_url = api_urls['films'] + "6"
     response = requests.get(film_url)
     call_count += 1
@@ -125,19 +121,16 @@ def main():
         print("Error retrieving film 6 data")
         return
 
-    # Print film details
     print(f"\nTitle   : {film_data['title']}")
     print(f"Director: {film_data['director']}")
     print(f"Producer: {film_data['producer']}")
     print(f"Released: {film_data['release_date']}\n")
 
-    # Step 3: Retrieve additional data using threads
     sections = ['characters', 'planets', 'starships', 'vehicles', 'species']
     for section in sections:
         urls = film_data[section]
         results = get_data_from_section(urls, section)
 
-        # Display the section results
         print(f"{section.capitalize()}: {len(results)}")
         print(', '.join(results))
         print()

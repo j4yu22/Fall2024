@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L02 Team Activity
 File:   team.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Team Activity: 
 

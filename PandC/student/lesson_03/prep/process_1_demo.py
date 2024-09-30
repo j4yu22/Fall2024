@@ -11,6 +11,7 @@ processes. Notice how you can use processes in a similar fashion to threads.
 """
 
 import multiprocessing as mp
+import time
 
 counter = 0
 
