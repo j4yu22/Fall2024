@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L02 Prove
 File:   prove.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Retrieve Star Wars details from a server
 
@@ -67,14 +67,28 @@ call_count = 0
 
 
 def main():
-    log = Log(show_terminal=True)
+    log = Log(show_terminal=True, filename_log = 'lesson-2-prove.log')
     log.start_timer('Starting to retrieve data from the server')
 
     # TODO Retrieve Top API urls
+    data = []
+    thread = Request_Thread(TOP_API_URL, data)
+    thread.start()
+    thread.join()
 
     # TODO Retrieve Details on film 6
-
+    routes = data[0]
+    films = routes['films']
+    # Request film 6 details
+    data = []
+    thread = Request_Thread(f'{films}6', data)
+    thread.start()
+    thread.join()
+    #get film 6  top level urls
+    film_6 = data[0]
+    
     # TODO Display results
+
 
     log.stop_timer('Total Time To complete')
     log.write(f'There were {call_count} calls to the server')
