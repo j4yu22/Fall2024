@@ -1,11 +1,38 @@
-import sympy as sp
 
-# Define the variable and the function
-x = sp.symbols('x')
-f = (16 * (1 + x)**2 - 16) / (1 + x - 1)
+"""
 
-# Compute the limit as x approaches 1
-limit_value = sp.limit(f, x, 0)
+"""
+def stateOfCells(cells, days):
 
-# Display the result
-print(limit_value)
+	for _ in range(days):
+		new_cells = [0] * len(cells)
+
+		for i in range(1,  len(cells) - 1):
+			left = cells[i - 1]
+			right = cells[i + 1]
+
+			if left == right:
+				new_cells[i] = 0
+
+			else:
+				new_cells[i] = 1
+
+			cells = new_cells
+
+	return cells
+
+def main():
+	#input for cell
+	cells = []
+	cell_size  = int(8)
+	cells = list(map(int(0 1 0 0 0 1 0 1).split()))
+	
+	#input for days
+	days = int(1)
+	
+	
+	result = stateOfCells(cells, days)
+	print(" ".join([str(res) for res in result]))	
+
+if __name__ == "__main__":
+	main()
