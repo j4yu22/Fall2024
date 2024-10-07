@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L04 Team Activity
 File:   team.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Practice concepts of Queues, Locks, and Semaphores.
 
@@ -56,8 +56,13 @@ def main():
     log = Log(show_terminal=True)
 
     # TODO create queue
+    q = queue.Queue()
+    q.put('item1')
+    q.put('item2')
+    q.put('item3')
+    q.put('item4')
     # TODO create semaphore (if needed)
-
+    semaphore = threading.Semaphore(4)
     # TODO create the threads. 1 filereader() and RETRIEVE_THREADS retrieve_thread()s
     # Pass any arguments to these thread need to do their job
 

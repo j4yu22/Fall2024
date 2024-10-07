@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L03 Prove
 File:   prove.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Video Frame Processing
 
