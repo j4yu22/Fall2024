@@ -1,0 +1,92 @@
+MAIN()
+    Display "Where is your board located?"
+    Get file name from user
+    CALL load_board(file_name)
+    CALL display_board(board)
+
+    LOOP
+        Display prompt "Enter square (Q to quit):"
+        Get input from user
+        IF user input is "Q"
+            CALL save_board(board)
+            Exit loop
+        ELSE
+            CALL process_move(user_input, board)
+
+        CALL display_board(board)
+
+    END LOOP
+END MAIN
+
+FUNCTION load_board(file_name)
+    Open the file specified by file_name
+    Read the contents of the file into the board array
+    Return the board
+END FUNCTION
+
+FUNCTION display_board(board)
+    Display column headers (A-I)
+    FOR each row in board
+        FOR each column in board
+            Display the value in the square (blank if 0)
+        END FOR
+        Display a separator line after every third row
+    END FOR
+END FUNCTION
+
+FUNCTION process_move(input, board)
+    CALL convert_coordinates(input) -> returns (row, col)
+    Display "What is the value?"
+    Get value from user
+
+    IF value is outside range (1-9)
+        Display "ERROR: Value is invalid"
+        Return
+    END IF
+
+    CALL validate_move(row, col, value, board) -> returns True/False
+    IF move is invalid
+        Display "ERROR: Move violates Sudoku rules"
+    ELSE
+        Update board at (row, col) with the value
+    END IF
+END FUNCTION
+
+FUNCTION convert_coordinates(coordinate)
+    Convert column letter (A-I) to a column number (0-8)
+    Convert row number (1-9) to row index (0-8)
+    Return (row, column)
+END FUNCTION
+
+FUNCTION validate_move(row, col, value, board)
+    # Check if the value already exists in the same row
+    FOR each cell in the same row
+        IF value equals any other cell value
+            Return False
+        END IF
+    END FOR
+
+    # Check if the value already exists in the same column
+    FOR each cell in the same column
+        IF value equals any other cell value
+            Return False
+        END IF
+    END FOR
+
+    # Check if the value already exists in the same 3x3 grid
+    Calculate the starting row and column for the 3x3 grid
+    FOR each cell in the 3x3 grid
+        IF value equals any other cell value
+            Return False
+        END IF
+    END FOR
+
+    # If no conflicts, the move is valid
+    Return True
+END FUNCTION
+
+FUNCTION save_board(board)
+    Open the file specified by user
+    Write the current state of the board to the file
+    Close the file
+END FUNCTION
