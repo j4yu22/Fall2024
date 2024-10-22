@@ -86,48 +86,54 @@ class Queue251():
 
 class Factory(threading.Thread):
     """ This is a factory.  It will create cars and place them on the car queue """
-    def __init__(self, queue, sem, factory_barrier):
+    def __init__(self, queue, sem, factory_barrier, queue_condition):
         super().__init__()
         self.cars_to_produce = random.randint(200, 300) # DO NOT change
         self.queue = queue
         self.sem = sem
         self.factory_barrier = factory_barrier
+        self.queue_condition = queue_condition
         self.cars_produced = 0
 
     def run(self):
         for _ in range(self.cars_to_produce):
             car = Car()
             self.sem.acquire()
-            self.queue.put(car)
+            with self.queue_condition:
+                self.queue.put(car)
+                self.queue_condition.notify_all()
             self.cars_produced += 1
 
         self.factory_barrier.wait()
 
-        if threading.current_thread().name == 'Thread-1':
+        if threading.current_thread() == threading.main_thread():
             self.sem.release()
 
 
 class Dealer(threading.Thread):
     """ This is a dealer that receives cars """
-    def __init__(self, queue, sem, dealer_stats, dealer_id):
+    def __init__(self, queue, sem, dealer_stats, dealer_id, queue_condition):
         super().__init__()
         self.queue = queue
         self.sem = sem
         self.dealer_stats = dealer_stats
         self.dealer_id = dealer_id
+        self.queue_condition = queue_condition
 
     def run(self):
         while True:
-            car = self.queue.get()
+            with self.queue_condition:
+                while len(self.queue._Queue251__items) == 0:
+                    self.queue_condition.wait()
 
-            if car is None:
-                break
+                car = self.queue.get()
+                if car is None:
+                    break
 
-            self.dealer_stats[self.dealer_id] += 1
+                self.dealer_stats[self.dealer_id] += 1
+                self.sem.release()
 
-            # Sleep a little - don't change.  This is the last line of the loop
             time.sleep(random.random() / (SLEEP_REDUCE_FACTOR + 0))
-
 
 
 def run_production(factory_count, dealer_count):
@@ -135,16 +141,17 @@ def run_production(factory_count, dealer_count):
         factories and dealerships passed in as arguments.
     """
     sem = threading.Semaphore(MAX_QUEUE_SIZE)
-
     car_queue = Queue251()
 
-    factory_barrier = threading.Barrier(factory_count)
+    queue_lock = threading.Lock()
+    queue_condition = threading.Condition(queue_lock)
 
+    factory_barrier = threading.Barrier(factory_count)
     dealer_stats = list([0] * dealer_count)
 
-    factories = [Factory(car_queue, sem, factory_barrier) for _ in range(factory_count)]
+    factories = [Factory(car_queue, sem, factory_barrier, queue_condition) for _ in range(factory_count)]
 
-    dealers = [Dealer(car_queue, sem, dealer_stats, i) for i in range(dealer_count)]
+    dealers = [Dealer(car_queue, sem, dealer_stats, i, queue_condition) for i in range(dealer_count)]
 
     log.start_timer()
 
@@ -157,8 +164,10 @@ def run_production(factory_count, dealer_count):
     for factory in factories:
         factory.join()
 
-    for _ in range(dealer_count):
-        car_queue.put(None)
+    with queue_lock:
+        for _ in range(dealer_count):
+            car_queue.put(None)
+        queue_condition.notify_all()
 
     for dealer in dealers:
         dealer.join()
@@ -192,4 +201,3 @@ def main(log):
 if __name__ == '__main__':
     log = Log(show_terminal=True)
     main(log)
-
