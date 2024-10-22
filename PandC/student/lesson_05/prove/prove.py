@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L05 Prove
 File:   prove.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Assignment 05 - Factories and Dealers
 
@@ -86,30 +86,44 @@ class Queue251():
 
 class Factory(threading.Thread):
     """ This is a factory.  It will create cars and place them on the car queue """
-
-    def __init__(self):
+    def __init__(self, queue, sem, factory_barrier):
+        super().__init__()
         self.cars_to_produce = random.randint(200, 300) # DO NOT change
-
+        self.queue = queue
+        self.sem = sem
+        self.factory_barrier = factory_barrier
+        self.cars_produced = 0
 
     def run(self):
-        # TODO produce the cars, the send them to the dealerships
+        for _ in range(self.cars_to_produce):
+            car = Car()
+            self.sem.acquire()
+            self.queue.put(car)
+            self.cars_produced += 1
 
-        # TODO wait until all of the factories are finished producing cars
+        self.factory_barrier.wait()
 
-        # TODO "Wake up/signal" the dealerships one more time.  Select one factory to do this
-        pass
-
+        if threading.current_thread().name == 'Thread-1':
+            self.sem.release()
 
 
 class Dealer(threading.Thread):
     """ This is a dealer that receives cars """
-
-    def __init__(self):
-        pass
+    def __init__(self, queue, sem, dealer_stats, dealer_id):
+        super().__init__()
+        self.queue = queue
+        self.sem = sem
+        self.dealer_stats = dealer_stats
+        self.dealer_id = dealer_id
 
     def run(self):
         while True:
-            # TODO handle a car
+            car = self.queue.get()
+
+            if car is None:
+                break
+
+            self.dealer_stats[self.dealer_id] += 1
 
             # Sleep a little - don't change.  This is the last line of the loop
             time.sleep(random.random() / (SLEEP_REDUCE_FACTOR + 0))
@@ -120,37 +134,39 @@ def run_production(factory_count, dealer_count):
     """ This function will do a production run with the number of
         factories and dealerships passed in as arguments.
     """
+    sem = threading.Semaphore(MAX_QUEUE_SIZE)
 
-    # TODO Create semaphore(s) if needed
-    # TODO Create queue
-    # TODO Create lock(s) if needed
-    # TODO Create barrier
+    car_queue = Queue251()
 
-    # This is used to track the number of cars received by each dealer
+    factory_barrier = threading.Barrier(factory_count)
+
     dealer_stats = list([0] * dealer_count)
 
-    # TODO create your factories, each factory will create a random amount of cars; your code must account for this.
-    # NOTE: You have no control over how many cars a factory will create in this assignment.
+    factories = [Factory(car_queue, sem, factory_barrier) for _ in range(factory_count)]
 
-    # TODO create your dealerships
+    dealers = [Dealer(car_queue, sem, dealer_stats, i) for i in range(dealer_count)]
 
     log.start_timer()
 
-    # TODO Start all dealerships
+    for dealer in dealers:
+        dealer.start()
 
-    # TODO Start all factories
+    for factory in factories:
+        factory.start()
 
-    # This is used to track the number of cars produced by each factory NOTE: DO NOT pass this into
-    # your factories! You must collect this data here in `run_production` after the factories are finished.
-    factory_stats = []
+    for factory in factories:
+        factory.join()
 
-    # TODO Wait for the factories and dealerships to complete; do not forget to get the factories stats
+    for _ in range(dealer_count):
+        car_queue.put(None)
+
+    for dealer in dealers:
+        dealer.join()
+
+    factory_stats = [factory.cars_produced for factory in factories]
 
     run_time = log.stop_timer(f'{sum(dealer_stats)} cars have been created.')
 
-    # This function must return the following - Don't change!
-    # factory_stats: is a list of the number of cars produced by each factory.
-    #                collect this information after the factories are finished. 
     return (run_time, car_queue.get_max_size(), dealer_stats, factory_stats)
 
 
