@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L06 Prove
 File:   prove.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Processing Plant
 
@@ -16,12 +16,13 @@ import multiprocessing as mp
 import os.path
 import time
 import datetime
+import json
 
 # Include cse 251 common Python files - Don't change
 from cse251 import *
 
 CONTROL_FILENAME = 'settings.json'
-BOXES_FILENAME   = 'boxes.txt'
+BOXES_FILENAME = 'boxes.txt'
 
 # Settings constants
 MARBLE_COUNT = 'marble-count'
@@ -48,6 +49,7 @@ class Bag():
     def __str__(self):
         return str(self.items)
 
+
 class Gift():
     """
     Gift of a large marble and a bag of marbles - Don't change
@@ -66,111 +68,122 @@ class Gift():
         marbles = marbles.replace("'", "")
         return f'Large marble: {self.large_marble}, marbles: {marbles[1:-1]}'
 
+
 class Marble_Creator(mp.Process):
     """ This class "creates" marbles and sends them to the bagger """
 
-    colors = ('Gold', 'Orange Peel', 'Purple Plum', 'Blue', 'Neon Silver', 
-        'Tuscan Brown', 'La Salle Green', 'Spanish Orange', 'Pale Goldenrod', 'Orange Soda', 
-        'Maximum Purple', 'Neon Pink', 'Light Orchid', 'Russian Violet', 'Sheen Green', 
-        'Isabelline', 'Ruby', 'Emerald', 'Middle Red Purple', 'Royal Orange', 
-        'Dark Fuchsia', 'Slate Blue', 'Neon Dark Green', 'Sage', 'Pale Taupe', 'Silver Pink', 
-        'Stop Red', 'Eerie Black', 'Indigo', 'Ivory', 'Granny Smith Apple', 
-        'Maximum Blue', 'Pale Cerulean', 'Vegas Gold', 'Mulberry', 'Mango Tango', 
-        'Fiery Rose', 'Mode Beige', 'Platinum', 'Lilac Luster', 'Duke Blue', 'Candy Pink', 
-        'Maximum Violet', 'Spanish Carmine', 'Antique Brass', 'Pale Plum', 'Dark Moss Green', 
-        'Mint Cream', 'Shandy', 'Cotton Candy', 'Beaver', 'Rose Quartz', 'Purple', 
-        'Almond', 'Zomp', 'Middle Green Yellow', 'Auburn', 'Chinese Red', 'Cobalt Blue', 
-        'Lumber', 'Honeydew', 'Icterine', 'Golden Yellow', 'Silver Chalice', 'Lavender Blue', 
-        'Outrageous Orange', 'Spanish Pink', 'Liver Chestnut', 'Mimi Pink', 'Royal Red', 'Arylide Yellow', 
-        'Rose Dust', 'Terra Cotta', 'Lemon Lime', 'Bistre Brown', 'Venetian Red', 'Brink Pink', 
-        'Russian Green', 'Blue Bell', 'Green', 'Black Coral', 'Thulian Pink', 
+    colors = ('Gold', 'Orange Peel', 'Purple Plum', 'Blue', 'Neon Silver',
+        'Tuscan Brown', 'La Salle Green', 'Spanish Orange', 'Pale Goldenrod', 'Orange Soda',
+        'Maximum Purple', 'Neon Pink', 'Light Orchid', 'Russian Violet', 'Sheen Green',
+        'Isabelline', 'Ruby', 'Emerald', 'Middle Red Purple', 'Royal Orange',
+        'Dark Fuchsia', 'Slate Blue', 'Neon Dark Green', 'Sage', 'Pale Taupe', 'Silver Pink',
+        'Stop Red', 'Eerie Black', 'Indigo', 'Ivory', 'Granny Smith Apple',
+        'Maximum Blue', 'Pale Cerulean', 'Vegas Gold', 'Mulberry', 'Mango Tango',
+        'Fiery Rose', 'Mode Beige', 'Platinum', 'Lilac Luster', 'Duke Blue', 'Candy Pink',
+        'Maximum Violet', 'Spanish Carmine', 'Antique Brass', 'Pale Plum', 'Dark Moss Green',
+        'Mint Cream', 'Shandy', 'Cotton Candy', 'Beaver', 'Rose Quartz', 'Purple',
+        'Almond', 'Zomp', 'Middle Green Yellow', 'Auburn', 'Chinese Red', 'Cobalt Blue',
+        'Lumber', 'Honeydew', 'Icterine', 'Golden Yellow', 'Silver Chalice', 'Lavender Blue',
+        'Outrageous Orange', 'Spanish Pink', 'Liver Chestnut', 'Mimi Pink', 'Royal Red', 'Arylide Yellow',
+        'Rose Dust', 'Terra Cotta', 'Lemon Lime', 'Bistre Brown', 'Venetian Red', 'Brink Pink',
+        'Russian Green', 'Blue Bell', 'Green', 'Black Coral', 'Thulian Pink',
         'Safety Yellow', 'White Smoke', 'Pastel Gray', 'Orange Soda', 'Lavender Purple',
-        'Brown', 'Gold', 'Blue-Green', 'Antique Bronze', 'Mint Green', 'Royal Blue', 
+        'Brown', 'Gold', 'Blue-Green', 'Antique Bronze', 'Mint Green', 'Royal Blue',
         'Light Orange', 'Pastel Blue', 'Middle Green')
 
-    def __init__(self):
+    def __init__(self, settings, pipe):
         mp.Process.__init__(self)
-        # TODO Add any arguments and variables here
+        self.marble_count = settings[MARBLE_COUNT]
+        self.creator_delay = settings[CREATOR_DELAY]
+        self.pipe = pipe
 
     def run(self):
-        '''
-        for each marble:
-            send the marble (one at a time) to the bagger
-              - A marble is a random name from the colors list above
-            sleep the required amount
-        Let the bagger know there are no more marbles
-        '''
-        pass
+        for _ in range(self.marble_count):
+            marble = random.choice(self.colors)
+            self.pipe.send(marble)
+            time.sleep(self.creator_delay)
+
+        self.pipe.send(None)  # Signal the end
 
 
 class Bagger(mp.Process):
-    """ Receives marbles from the marble creator, then there are enough
-        marbles, the bag of marbles are sent to the assembler """
-    def __init__(self):
+    """ Receives marbles from the marble creator, then sends bags to the assembler """
+
+    def __init__(self, settings, in_pipe, out_pipe):
         mp.Process.__init__(self)
-        # TODO Add any arguments and variables here
+        self.bag_count = settings[NUMBER_OF_MARBLES_IN_A_BAG]
+        self.bagger_delay = settings[BAGGER_DELAY]
+        self.in_pipe = in_pipe
+        self.out_pipe = out_pipe
 
     def run(self):
-        '''
-        while there are marbles to process
-            collect enough marbles for a bag
-            send the bag to the assembler
-            sleep the required amount
-        tell the assembler that there are no more bags
-        '''
+        bag = Bag()
+        while True:
+            marble = self.in_pipe.recv()
+            if marble is None:
+                if bag.get_size() > 0:
+                    self.out_pipe.send(bag)  # Send the last incomplete bag
+                self.out_pipe.send(None)  # Signal the end
+                break
+
+            bag.add(marble)
+            if bag.get_size() == self.bag_count:
+                self.out_pipe.send(bag)
+                bag = Bag()
+                time.sleep(self.bagger_delay)
 
 
 class Assembler(mp.Process):
-    """ Take the set of marbles and create a gift from them.
-        Sends the completed gift to the wrapper """
+    """ Takes bags and creates gifts, then sends gifts to the wrapper """
+
     marble_names = ('Lucky', 'Spinner', 'Sure Shot', 'Big Joe', 'Winner', '5-Star', 'Hercules', 'Apollo', 'Zeus')
 
-    def __init__(self):
+    def __init__(self, settings, in_pipe, out_pipe):
         mp.Process.__init__(self)
-        # TODO Add any arguments and variables here
+        self.assembler_delay = settings[ASSEMBLER_DELAY]
+        self.in_pipe = in_pipe
+        self.out_pipe = out_pipe
 
     def run(self):
-        '''
-        while there are bags to process
-            create a gift with a large marble (random from the name list) and the bag of marbles
-            send the gift to the wrapper
-            sleep the required amount
-        tell the wrapper that there are no more gifts
-        '''
+        while True:
+            bag = self.in_pipe.recv()
+            if bag is None:
+                self.out_pipe.send(None)  # Signal the end
+                break
+
+            large_marble = random.choice(self.marble_names)
+            gift = Gift(large_marble, bag)
+            self.out_pipe.send(gift)
+            time.sleep(self.assembler_delay)
 
 
 class Wrapper(mp.Process):
-    """ Takes created gifts and "wraps" them by placing them in the boxes file. """
-    def __init__(self):
+    """ Takes gifts and wraps them by saving to a file """
+
+    def __init__(self, settings, in_pipe, gift_counter):
         mp.Process.__init__(self)
-        # TODO Add any arguments and variables here
+        self.wrapper_delay = settings[WRAPPER_DELAY]
+        self.in_pipe = in_pipe
+        self.gift_counter = gift_counter
 
     def run(self):
-        '''
-        open file for writing
-        while there are gifts to process
-            save gift to the file with the current time
-            sleep the required amount
-        '''
+        with open(BOXES_FILENAME, 'w') as file:
+            while True:
+                gift = self.in_pipe.recv()
+                if gift is None:
+                    break
 
-
-def display_final_boxes(filename, log):
-    """ Display the final boxes file to the log file -  Don't change """
-    if os.path.exists(filename):
-        log.write(f'Contents of {filename}')
-        with open(filename) as boxes_file:
-            for line in boxes_file:
-                log.write(line.strip())
-    else:
-        log.write_error(f'The file {filename} doesn\'t exist.  No boxes were created.')
-
+                timestamp = datetime.datetime.now().time()
+                file.write(f'Created - {timestamp}: {gift}\n')
+                with self.gift_counter.get_lock():
+                    self.gift_counter.value += 1
+                time.sleep(self.wrapper_delay)
 
 
 def main():
     """ Main function """
 
     log = Log(show_terminal=True)
-
     log.start_timer()
 
     # Load settings file
@@ -181,36 +194,52 @@ def main():
 
     log.write(f'Marble count     = {settings[MARBLE_COUNT]}')
     log.write(f'Marble delay     = {settings[CREATOR_DELAY]}')
-    log.write(f'Marbles in a bag = {settings[NUMBER_OF_MARBLES_IN_A_BAG]}') 
+    log.write(f'Marbles in a bag = {settings[NUMBER_OF_MARBLES_IN_A_BAG]}')
     log.write(f'Bagger delay     = {settings[BAGGER_DELAY]}')
     log.write(f'Assembler delay  = {settings[ASSEMBLER_DELAY]}')
     log.write(f'Wrapper delay    = {settings[WRAPPER_DELAY]}')
 
-    # TODO: create Pipes between creator -> bagger -> assembler -> wrapper
+    # Create Pipes
+    creator_to_bagger, bagger_to_creator = mp.Pipe()
+    bagger_to_assembler, assembler_to_bagger = mp.Pipe()
+    assembler_to_wrapper, wrapper_to_assembler = mp.Pipe()
 
-    # TODO create variable to be used to count the number of gifts
+    # Create shared variable to count the number of gifts created
+    gift_counter = mp.Value('i', 0)
 
-    # delete final boxes file
+    # Delete final boxes file
     if os.path.exists(BOXES_FILENAME):
         os.remove(BOXES_FILENAME)
 
     log.write('Create the processes')
 
-    # TODO Create the processes (ie., classes above)
+    # Create the processes
+    creator = Marble_Creator(settings, creator_to_bagger)
+    bagger = Bagger(settings, bagger_to_creator, bagger_to_assembler)
+    assembler = Assembler(settings, assembler_to_bagger, assembler_to_wrapper)
+    wrapper = Wrapper(settings, wrapper_to_assembler, gift_counter)
 
     log.write('Starting the processes')
-    # TODO add code here
+
+    # Start processes
+    creator.start()
+    bagger.start()
+    assembler.start()
+    wrapper.start()
 
     log.write('Waiting for processes to finish')
-    # TODO add code here
+
+    # Wait for processes to complete
+    creator.join()
+    bagger.join()
+    assembler.join()
+    wrapper.join()
 
     display_final_boxes(BOXES_FILENAME, log)
-    
-    # TODO Log the number of gifts created.
 
+    # Log the number of gifts created
+    log.write(f'Total gifts created: {gift_counter.value}')
     log.stop_timer(f'Total time')
-
-
 
 
 if __name__ == '__main__':
