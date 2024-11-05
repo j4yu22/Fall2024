@@ -14,8 +14,11 @@ below before submitting this file:
 Note: each of the 5 task functions need to return a string.  They should not print anything.
 
 TODO:
-I chose a pool size of 5 for each pool. I coded this on my desktop, which has a 6 core CPU. Despite playing around with the different tasks, such as
-lowering the pool size for I/O bound processes, 5's across the board was the fastest with all my testing. I chose this  
+I didn't select a constant for each pool size, I wrote code using the multiprocessing library to use the number of physical cores on the given machine
+running the program - 1. I decided to do that after testing thoroughly, and finding that for both my desktop and laptop (both of which use hyperthreading)
+a pool size of 5 was ideal for each pool, even after changing values such as lowering pool size for I/O bound processes like 'name'. Because of hyperthreading,
+the multiprocessing library was picking up logical processors, not physical core count, which is why usable_cores is the number of logical processors divided by
+2, then minus 1. I found that this dynamically optimized the pool size when ran on both my laptop and desktop.
 
 Add your comments here on the pool sizes that you used for your assignment and why they were the best choices.
 """
