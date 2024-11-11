@@ -2,7 +2,7 @@
 Course: CSE 251 
 Lesson: L09 Prove Part 2
 File:   prove_part_2.py
-Author: <Add name here>
+Author: Jay Underwood
 
 Purpose: Part 2 of prove 9, finding the path to the end of a maze using recursion.
 
