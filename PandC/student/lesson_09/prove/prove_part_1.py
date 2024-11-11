@@ -59,7 +59,7 @@ def solve_path(maze):
 
 
     # Hint: You can create an inner function to do the recursion
-    solved = depth_first(maze.start_pos[0], maze.start_pos[1])
+    # solved = depth_first(maze.start_pos[0], maze.start_pos[1])
     return path
 
 
