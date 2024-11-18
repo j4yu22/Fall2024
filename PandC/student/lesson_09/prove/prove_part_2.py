@@ -29,7 +29,6 @@ Why would it work?
 
 """
 
-import math
 import threading 
 from screen import Screen
 from maze import Maze
@@ -80,14 +79,62 @@ def get_color():
 
 # TODO: Add any function(s) you need, if any, here.
 
-
 def solve_find_end(maze):
-    """ Finds the end position using threads. Nothing is returned. """
-    # When one of the threads finds the end position, stop all of them.
-    global stop
+    """ Solve the maze using recursive threading. Each branch uses a new thread at intersections. """
+    global stop, thread_count
     stop = False
+    thread_count = 0
 
+    def depth_first(row, col, color):
+        global stop, thread_count
+        if stop:
+            return
 
+        # Check if the maze is already solved
+        if maze.at_end(row, col):
+            maze.move(row, col, color)
+            stop = True
+            return
+
+        if not maze.can_move_here(row, col):
+            return
+
+        maze.move(row, col, color)
+
+        possible_moves = maze.get_possible_moves(row, col)
+
+        # If there's only one move, continue with the current thread
+        if len(possible_moves) == 1:
+            next_row, next_col = possible_moves[0]
+            if maze.can_move_here(next_row, next_col):
+                depth_first(next_row, next_col, color)
+        else:
+            # Create new threads for each move at intersections
+            threads = []
+            for i, (next_row, next_col) in enumerate(possible_moves):
+                if maze.can_move_here(next_row, next_col) and not stop:
+                    if i == 0:
+                        new_color = color
+                        thread = threading.Thread(target=depth_first, args=(next_row, next_col, new_color))
+                        threads.append(thread)
+                        thread_count += 1
+                        thread.start()
+                    else:
+                        new_color = get_color()  # Each thread gets a different color
+                        thread = threading.Thread(target=depth_first, args=(next_row, next_col, new_color))
+                        threads.append(thread)
+                        thread_count += 1
+                        thread.start()
+
+            for thread in threads:
+                thread.join()
+
+    start_row, start_col = maze.get_start_pos()
+    initial_color = get_color()
+    initial_thread = threading.Thread(target=depth_first, args=(start_row, start_col, initial_color))
+    thread_count += 1
+    initial_thread.start()
+    initial_thread.join()
 
 
 def find_end(log, filename, delay):
