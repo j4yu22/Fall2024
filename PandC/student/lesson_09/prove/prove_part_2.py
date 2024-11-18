@@ -21,11 +21,14 @@ position:
 
 What would be your strategy?
 
-<Answer here>
+I would modify the program to store each thread's moves in a path list. When a thread reaches
+the maze's end, it should signal all other threads to stop and trace back the threads that got it to the end,
+then print the stored path list as the solution.
 
 Why would it work?
 
-<Answer here>
+This approach works because each thread keeps track of its own path. When a thread reaches the exit, 
+the stored path can be printed or returned, ensuring the complete path to the exit is recorded and displayed.
 
 """
 
