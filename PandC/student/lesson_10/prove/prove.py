@@ -2,7 +2,7 @@
 Course: CSE 251
 Lesson Week: 10
 File: assignment.py
-Author: <your name>
+Author: Jay Underwood
 
 Purpose: assignment for week 10 - reader writer problem
 
@@ -53,50 +53,119 @@ Instructions:
   
                     print(<variable from the buffer>, end=', ', flush=True)
 
-Add any comments for me:
+Add any comments for me: N/A
 
 """
 
 import random
-from multiprocessing.managers import SharedMemoryManager
 import multiprocessing as mp
+from multiprocessing.managers import SharedMemoryManager
+from multiprocessing import Semaphore, Lock
+from multiprocessing.shared_memory import ShareableList
 
 BUFFER_SIZE = 10
 READERS = 2
 WRITERS = 2
 
+
+def writer(shared_list, write_semaphore, read_semaphore, write_lock, items_to_send):
+    """
+    Writer process: Writes items into the shared buffer.
+
+    Parameters:
+        shared_list (ShareableList): The shared buffer.
+        write_semaphore (Semaphore): Semaphore to manage write operations.
+        read_semaphore (Semaphore): Semaphore to signal readers.
+        write_lock (Lock): Lock to ensure thread-safe writes.
+        items_to_send (int): Number of items to write to the buffer.
+
+    Returns:
+        None
+    """
+    buffer_size = BUFFER_SIZE
+
+    for _ in range(items_to_send):
+        write_semaphore.acquire()
+        with write_lock:
+            write_index = shared_list[BUFFER_SIZE]
+            current_value = shared_list[BUFFER_SIZE + 2]
+            shared_list[write_index] = current_value
+            shared_list[BUFFER_SIZE] = (write_index + 1) % buffer_size
+            shared_list[BUFFER_SIZE + 2] += 1
+        read_semaphore.release()
+
+    for _ in range(READERS):
+        read_semaphore.release()
+
+
+def reader(shared_list, write_semaphore, read_semaphore, read_lock, received_count, total_items):
+    """
+    Reader process: Reads items from the shared buffer.
+
+    Parameters:
+        shared_list (ShareableList): The shared buffer.
+        write_semaphore (Semaphore): Semaphore to signal writers.
+        read_semaphore (Semaphore): Semaphore to manage read operations.
+        read_lock (Lock): Lock to ensure thread-safe reads.
+        received_count (Value): Shared counter to track received items.
+        total_items (int): Total number of items to read.
+
+    Returns:
+        None
+    """
+    buffer_size = BUFFER_SIZE
+
+    while True:
+        read_semaphore.acquire()
+        with read_lock:
+            if received_count.value >= total_items:
+                return
+            read_index = shared_list[BUFFER_SIZE + 1]
+            value = shared_list[read_index]
+            received_count.value += 1
+            if received_count.value == total_items:
+                print(total_items, end="\n", flush=True)
+                return
+            else:
+                print(value, end=", ", flush=True)
+            shared_list[BUFFER_SIZE + 1] = (read_index + 1) % buffer_size
+        write_semaphore.release()
+
+
 def main():
+    """
+    Main function to set up shared memory and processes.
 
-    # This is the number of values that the writer will send to the reader
+    Parameters:
+        None
+
+    Returns:
+        None
+    """
     items_to_send = random.randint(1000, 10000)
-
     smm = SharedMemoryManager()
     smm.start()
+    shared_list = ShareableList([0] * BUFFER_SIZE + [0, 0, 1])
+    write_semaphore = mp.Semaphore(BUFFER_SIZE)
+    read_semaphore = mp.Semaphore(0)
+    write_lock = mp.Lock()
+    read_lock = mp.Lock()
+    received_count = mp.Value('i', 0)
+    writer_processes = [mp.Process(target=writer, args=(shared_list, write_semaphore, read_semaphore, write_lock, items_to_send // WRITERS)) for _ in range(WRITERS)]
+    reader_processes = [mp.Process(target=reader, args=(shared_list, write_semaphore, read_semaphore, read_lock, received_count, items_to_send)) for _ in range(READERS)]
 
-    # TODO - Create a ShareableList to be used between the processes
-    #      - The buffer should be size 10 PLUS at least three other
-    #        values (ie., [0] * (BUFFER_SIZE + 3)).  The extra values
-    #        are used for the head and tail for the circular buffer.
-    #        The another value is the current number that the writers
-    #        need to send over the buffer.  This last value is shared
-    #        between the writers.
-    #        You can add another value to the sharedable list to keep
-    #        track of the number of values received by the readers.
-    #        (ie., [0] * (BUFFER_SIZE + 4))
+    for wp in writer_processes:
+        wp.start()
+    for rp in reader_processes:
+        rp.start()
 
-    # TODO - Create any lock(s) or semaphore(s) that you feel you need
+    for wp in writer_processes:
+        wp.join()
+    for rp in reader_processes:
+        rp.join()
 
-    # TODO - create reader and writer processes
-
-    # TODO - Start the processes and wait for them to finish
-
-    print(f'{items_to_send} values sent')
-
-    # TODO - Display the number of numbers/items received by the reader.
-    #        Can not use "items_to_send", must be a value collected
-    #        by the reader processes.
-    # print(f'{<your variable>} values received')
-
+    print(f"\n{items_to_send} values sent")
+    print(f"{received_count.value} values received")
     smm.shutdown()
 
 
